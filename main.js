@@ -7,7 +7,18 @@ const en = require('./bad-words-sources/en.json');
 const prefix = '!';
 const sentanceWordsSeparator = ' ';
 const pingCommand = 'ping';
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+const helpCommand = 'help';
+const client = new Client({
+    intents: [
+        Intents.FLAGS.GUILDS,
+        Intents.FLAGS.GUILD_MESSAGES,
+        Intents.FLAGS.DIRECT_MESSAGES,
+        Intents.FLAGS.GUILD_INTEGRATIONS,
+        Intents.FLAGS.GUILD_WEBHOOKS,
+        Intents.FLAGS.DIRECT_MESSAGE_TYPING,
+        Intents.FLAGS.GUILD_MEMBERS
+    ]
+});
 client.commands = new Collection();
 
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
@@ -18,11 +29,16 @@ for (const file of commandFiles) {
 }
 
 
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
-client.on('messageCreate', message => {
+client.on("guildMemberAdd", async (member) => {
+    member.guild.channels.cache.get(process.env.HELLO_MESSAGE_ON_FIRST_CONNECT_ID)
+        .send(`Hi ${member.user} and welcome to the server.\nUse !help to see the available commands :)`);
+});
+
+client.on('messageCreate', async message => {
     let havingBadWords = havingBadWordsInTheText(message.content);
 
     if (!havingBadWords) {
@@ -54,8 +70,18 @@ function havingBadWordsInEnglish(text) {
 function checkForValidCommand(message) {
     if (!message.content.startsWith(prefix) || message.author.bot) return;
     let command = message.content.slice(prefix.length).toLowerCase();
-    if (command === pingCommand) {
-        client.commands.get(pingCommand).execute(message);
+
+    switch (command) {
+        case helpCommand:
+            client.commands.get(helpCommand).execute(message, client.commands);
+            break;
+        case pingCommand:
+            client.commands.get(pingCommand).execute(message);
+            break;
+
+        default:
+            client.commands.get(helpCommand).execute(message, client.commands);
+            break;
     }
 }
 
